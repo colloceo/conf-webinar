@@ -43,6 +43,13 @@
         <div class="lobby-header">
             <h1>Ready to join "{{ $meeting->title }}"?</h1>
             <p>Test your camera and microphone before joining</p>
+            
+            @guest
+            <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 1.5rem; margin: 1.5rem 0; max-width: 400px; margin-left: auto; margin-right: auto;">
+                <label for="participantName" style="display: block; color: var(--diamond-white); margin-bottom: 0.5rem; font-weight: 500;">Your Name</label>
+                <input type="text" id="participantName" placeholder="Enter your name to join" style="width: 100%; padding: 0.75rem; border: 1px solid rgba(0, 201, 255, 0.3); border-radius: 6px; background: rgba(255,255,255,0.05); color: var(--diamond-white); font-family: inherit;" required>
+            </div>
+            @endguest
         </div>
         
         <div class="preview">
@@ -375,7 +382,35 @@
             }
         }
 
-        function joinMeeting() {
+        async function joinMeeting() {
+            @guest
+            // For anonymous users, get their name first
+            const nameInput = document.getElementById('participantName');
+            const participantName = nameInput.value.trim();
+            
+            if (!participantName) {
+                alert('Please enter your name to join the meeting');
+                nameInput.focus();
+                return;
+            }
+            
+            // Store participant session data
+            try {
+                await fetch('{{ route("meetings.lobby", $meeting) }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({
+                        participant_name: participantName
+                    })
+                });
+            } catch (error) {
+                console.error('Failed to store participant data:', error);
+            }
+            @endguest
+            
             const settings = {
                 dataSaverMode,
                 audioOnlyMode,

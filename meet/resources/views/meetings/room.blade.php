@@ -141,8 +141,8 @@
             <h3>Create Quick Poll</h3>
             <input type="text" id="pollQuestion" placeholder="Enter your question..." style="width: 100%; margin: 15px 0; padding: 10px; border-radius: 6px; border: 1px solid #4b5563; background: #1f2937; color: white;">
             <div id="pollOptions">
-                <input type="text" placeholder="Option 1" class="poll-option-input">
-                <input type="text" placeholder="Option 2" class="poll-option-input">
+                <input type="text" placeholder="Option 1" class="poll-option-input" style="width: 100%; margin: 8px 0; padding: 10px; border-radius: 6px; border: 1px solid #4b5563; background: #1f2937; color: white;">
+                <input type="text" placeholder="Option 2" class="poll-option-input" style="width: 100%; margin: 8px 0; padding: 10px; border-radius: 6px; border: 1px solid #4b5563; background: #1f2937; color: white;">
             </div>
             <div style="margin-top: 20px; text-align: right;">
                 <button onclick="closePoll()" style="margin-right: 10px; padding: 8px 16px; background: #6b7280; color: white; border: none; border-radius: 6px;">Cancel</button>
@@ -220,6 +220,17 @@
                 
             } catch (error) {
                 console.error('Failed to get local media:', error);
+                // Show user-friendly error message
+                const localTile = document.getElementById('localTile');
+                localTile.innerHTML = `
+                    <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #1f2937; color: #9ca3af; text-align: center; padding: 20px;">
+                        <div>
+                            <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                            <p>Camera/Microphone access denied</p>
+                            <p style="font-size: 0.8rem;">Please allow access and refresh</p>
+                        </div>
+                    </div>
+                `;
             }
         }
 
@@ -278,6 +289,9 @@
                     break;
                 case 'poll':
                     displayPoll(message);
+                    break;
+                case 'screen-share':
+                    handleScreenShare(message);
                     break;
             }
         }
@@ -434,6 +448,115 @@
             chatMessages.appendChild(pollDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
+        
+        function handleScreenShare(message) {
+            if (message.sharing) {
+                enterScreenShareMode(`tile-${message.from}`);
+            } else {
+                exitScreenShareMode();
+            }
+        }
+        
+        function enterScreenShareMode(tileId) {
+            const videoGrid = document.getElementById('videoGrid');
+            const mainArea = videoGrid.parentElement;
+            
+            // Hide video grid and show screen share
+            videoGrid.style.display = 'none';
+            
+            // Create screen share container
+            const screenContainer = document.createElement('div');
+            screenContainer.id = 'screenShareContainer';
+            screenContainer.style.cssText = `
+                flex: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: #000;
+                position: relative;
+            `;
+            
+            // Clone the sharing tile
+            const sharingTile = document.getElementById(tileId);
+            if (sharingTile) {
+                const screenVideo = sharingTile.querySelector('video').cloneNode();
+                screenVideo.srcObject = sharingTile.querySelector('video').srcObject;
+                screenVideo.style.cssText = `
+                    width: 100%;
+                    height: 100%;
+                    object-fit: contain;
+                `;
+                
+                const screenInfo = document.createElement('div');
+                screenInfo.style.cssText = `
+                    position: absolute;
+                    top: 20px;
+                    left: 20px;
+                    background: rgba(0,0,0,0.8);
+                    color: white;
+                    padding: 8px 16px;
+                    border-radius: 20px;
+                    font-size: 0.9rem;
+                `;
+                screenInfo.innerHTML = `<i class="fas fa-desktop"></i> ${sharingTile.querySelector('.user-info').textContent} is sharing`;
+                
+                screenContainer.appendChild(screenVideo);
+                screenContainer.appendChild(screenInfo);
+            }
+            
+            mainArea.insertBefore(screenContainer, videoGrid);
+            
+            // Show small video grid in corner
+            createThumbnailGrid();
+        }
+        
+        function exitScreenShareMode() {
+            const screenContainer = document.getElementById('screenShareContainer');
+            const thumbnailGrid = document.getElementById('thumbnailGrid');
+            const videoGrid = document.getElementById('videoGrid');
+            
+            if (screenContainer) screenContainer.remove();
+            if (thumbnailGrid) thumbnailGrid.remove();
+            
+            videoGrid.style.display = 'grid';
+        }
+        
+        function createThumbnailGrid() {
+            const mainArea = document.getElementById('videoGrid').parentElement;
+            const thumbnailGrid = document.createElement('div');
+            thumbnailGrid.id = 'thumbnailGrid';
+            thumbnailGrid.style.cssText = `
+                position: absolute;
+                bottom: 20px;
+                right: 20px;
+                display: flex;
+                gap: 8px;
+                z-index: 100;
+            `;
+            
+            // Add all video tiles as thumbnails
+            const videoGrid = document.getElementById('videoGrid');
+            Array.from(videoGrid.children).forEach(tile => {
+                const thumbnail = tile.cloneNode(true);
+                thumbnail.style.cssText = `
+                    width: 120px;
+                    height: 80px;
+                    border-radius: 8px;
+                    overflow: hidden;
+                    border: 2px solid rgba(255,255,255,0.3);
+                `;
+                
+                const video = thumbnail.querySelector('video');
+                if (video) {
+                    video.srcObject = tile.querySelector('video').srcObject;
+                    video.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+                }
+                
+                thumbnailGrid.appendChild(thumbnail);
+            });
+            
+            mainArea.appendChild(thumbnailGrid);
+        }
 
         function toggleAudio() {
             isAudioMuted = !isAudioMuted;
@@ -449,6 +572,61 @@
             updateControlButtons();
             updateParticipantStatus({ is_video_off: isVideoMuted });
             broadcastMessage({ type: 'video-toggle', muted: isVideoMuted });
+        }
+
+        async function toggleScreenShare() {
+            try {
+                if (localStream.getVideoTracks()[0].label.includes('screen')) {
+                    // Stop screen sharing, return to camera
+                    const constraints = getMediaConstraints();
+                    localStream = await navigator.mediaDevices.getUserMedia(constraints);
+                    document.getElementById('localVideo').srcObject = localStream;
+                    
+                    // Update all peer connections
+                    peers.forEach(async (pc) => {
+                        const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+                        if (sender) {
+                            await sender.replaceTrack(localStream.getVideoTracks()[0]);
+                        }
+                    });
+                    
+                    // Broadcast screen share stopped
+                    broadcastMessage({ type: 'screen-share', sharing: false });
+                    exitScreenShareMode();
+                    updateControlButtons();
+                } else {
+                    // Start screen sharing
+                    const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                    const videoTrack = screenStream.getVideoTracks()[0];
+                    
+                    // Replace video track in local stream
+                    localStream.getVideoTracks().forEach(track => track.stop());
+                    localStream.removeTrack(localStream.getVideoTracks()[0]);
+                    localStream.addTrack(videoTrack);
+                    
+                    document.getElementById('localVideo').srcObject = localStream;
+                    
+                    // Update all peer connections
+                    peers.forEach(async (pc) => {
+                        const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+                        if (sender) {
+                            await sender.replaceTrack(videoTrack);
+                        }
+                    });
+                    
+                    // Broadcast screen share started
+                    broadcastMessage({ type: 'screen-share', sharing: true });
+                    enterScreenShareMode('localTile');
+                    updateControlButtons();
+                    
+                    // Handle screen share end
+                    videoTrack.onended = () => {
+                        toggleScreenShare(); // Return to camera
+                    };
+                }
+            } catch (error) {
+                console.error('Screen share error:', error);
+            }
         }
         
         async function updateParticipantStatus(status) {
@@ -499,6 +677,9 @@
             document.getElementById('muteBtn').className = `control-btn ${isAudioMuted ? 'active' : 'inactive'}`;
             document.getElementById('videoBtn').className = `control-btn ${isVideoMuted ? 'active' : 'inactive'}`;
             document.getElementById('handBtn').className = `control-btn ${isHandRaised ? 'primary' : 'inactive'}`;
+            
+            const isScreenSharing = localStream && localStream.getVideoTracks()[0] && localStream.getVideoTracks()[0].label.includes('screen');
+            document.getElementById('screenBtn').className = `control-btn ${isScreenSharing ? 'primary' : 'inactive'}`;
         }
 
         function sendChatMessage() {

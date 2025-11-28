@@ -12,6 +12,7 @@ Route::prefix('meetings')->name('meetings.')->group(function () {
     Route::get('create', [MeetingController::class, 'create'])->name('create');
     Route::post('/', [MeetingController::class, 'store'])->name('store');
     Route::get('{meeting}/lobby', [MeetingController::class, 'lobby'])->name('lobby');
+    Route::post('{meeting}/lobby', [MeetingController::class, 'storeLobbyData'])->name('lobby.store');
     Route::get('{meeting}', [MeetingController::class, 'join'])->name('join');
     
     // WebRTC Signaling (PHP-based)
