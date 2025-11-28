@@ -1,10 +1,10 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>{{ $meeting->title }} - Digital Leap Africa</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <style>
+@extends('layouts.app')
+
+@section('title', $meeting->title . ' - Digital Leap Africa')
+@section('meta_description', 'Video conference meeting room')
+
+@push('styles')
+<style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #1f2937; color: white; overflow: hidden; }
         
@@ -53,10 +53,11 @@
         .poll-content { background: #374151; padding: 30px; border-radius: 12px; max-width: 500px; width: 90%; }
         .poll-option { margin: 10px 0; padding: 10px; background: #4b5563; border-radius: 6px; cursor: pointer; }
         .poll-option:hover { background: #6b7280; }
-    </style>
-</head>
-<body>
-    <div class="meeting-container">
+</style>
+@endpush
+
+@section('content')
+<div class="meeting-container" style="margin: -2rem -5% 0; width: 110%; height: calc(100vh - 4rem);">
         <div class="main-area">
             <div id="videoGrid" class="video-grid grid-1">
                 <div class="video-tile" id="localTile">
@@ -66,12 +67,24 @@
             </div>
             
             <div class="controls-bar">
-                <button class="control-btn inactive" id="muteBtn" title="Mute/Unmute">🎤</button>
-                <button class="control-btn inactive" id="videoBtn" title="Camera On/Off">📹</button>
-                <button class="control-btn inactive" id="screenBtn" title="Share Screen">🖥️</button>
-                <button class="control-btn inactive" id="handBtn" title="Raise Hand">✋</button>
-                <button class="control-btn inactive" id="pollBtn" title="Create Poll">📊</button>
-                <button class="control-btn active" id="leaveBtn" title="Leave Meeting">📞</button>
+                <button class="control-btn inactive" id="muteBtn" title="Mute/Unmute">
+                    <i class="fas fa-microphone"></i>
+                </button>
+                <button class="control-btn inactive" id="videoBtn" title="Camera On/Off">
+                    <i class="fas fa-video"></i>
+                </button>
+                <button class="control-btn inactive" id="screenBtn" title="Share Screen">
+                    <i class="fas fa-desktop"></i>
+                </button>
+                <button class="control-btn inactive" id="handBtn" title="Raise Hand">
+                    <i class="fas fa-hand-paper"></i>
+                </button>
+                <button class="control-btn inactive" id="pollBtn" title="Create Poll">
+                    <i class="fas fa-poll"></i>
+                </button>
+                <button class="control-btn active" id="leaveBtn" title="Leave Meeting">
+                    <i class="fas fa-phone-slash"></i>
+                </button>
             </div>
         </div>
         
@@ -103,7 +116,7 @@
                     </div>
                     
                     <div class="hand-queue">
-                        <h4>✋ Hand Raised Queue</h4>
+                        <h4><i class="fas fa-hand-paper"></i> Hand Raised Queue</h4>
                         <div id="handQueue"></div>
                     </div>
                 </div>
@@ -126,7 +139,8 @@
         </div>
     </div>
 
-    <script>
+@push('scripts')
+<script>
         // WebRTC and Meeting State
         let localStream = null;
         let peers = new Map();
@@ -390,7 +404,7 @@
             }
             
             queueDiv.innerHTML = handQueue.map(id => 
-                `<div class="participant hand-raised">✋ User ${id.substr(0, 8)}</div>`
+                `<div class="participant hand-raised"><i class="fas fa-hand-paper"></i> User ${id.substr(0, 8)}</div>`
             ).join('');
         }
         
@@ -399,7 +413,7 @@
             const pollDiv = document.createElement('div');
             pollDiv.innerHTML = `
                 <div style="background: #4b5563; padding: 15px; border-radius: 8px; margin: 10px 0;">
-                    <h4>📊 ${message.question}</h4>
+                    <h4><i class="fas fa-poll"></i> ${message.question}</h4>
                     ${message.options.map((option, i) => 
                         `<div class="poll-option" onclick="votePoll(${i})">${option}</div>`
                     ).join('')}
@@ -519,6 +533,6 @@
         
         // Initialize when page loads
         initMeeting();
-    </script>
-</body>
-</html>
+</script>
+@endpush
+@endsection

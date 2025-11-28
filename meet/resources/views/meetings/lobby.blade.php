@@ -1,9 +1,10 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Join {{ $meeting->title }} - Digital Leap Africa</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
+@extends('layouts.app')
+
+@section('title', 'Join ' . $meeting->title . ' - Digital Leap Africa')
+@section('meta_description', 'Test your camera and microphone before joining the meeting')
+
+@push('styles')
+<style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; }
         .lobby { max-width: 800px; margin: 50px auto; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
@@ -25,10 +26,11 @@
         .network-good { background: #d1fae5; color: #065f46; }
         .network-poor { background: #fee2e2; color: #991b1b; }
         .join-btn { width: 100%; padding: 15px; background: #059669; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; }
-    </style>
-</head>
-<body>
-    <div class="lobby">
+</style>
+@endpush
+
+@section('content')
+<div class="lobby">
         <h1>Ready to join "{{ $meeting->title }}"?</h1>
         <p style="color: #6b7280; margin-bottom: 30px;">Test your camera and microphone before joining</p>
         
@@ -38,14 +40,18 @@
                     <video id="localVideo" autoplay muted></video>
                 </div>
                 <div class="controls">
-                    <button class="btn btn-secondary" id="toggleVideo">📹 Camera</button>
-                    <button class="btn btn-secondary" id="toggleAudio">🎤 Microphone</button>
+                    <button class="btn btn-secondary" id="toggleVideo">
+                        <i class="fas fa-video"></i> Camera
+                    </button>
+                    <button class="btn btn-secondary" id="toggleAudio">
+                        <i class="fas fa-microphone"></i> Microphone
+                    </button>
                 </div>
             </div>
             
             <div class="settings">
                 <div id="networkStatus" class="network-status network-good">
-                    🟢 Network: Good (Loading...)
+                    <i class="fas fa-circle" style="color: #10b981;"></i> Network: Good (Loading...)
                 </div>
                 
                 <div class="setting-item">
@@ -69,7 +75,8 @@
         <button class="join-btn" onclick="joinMeeting()">Join Meeting</button>
     </div>
 
-    <script>
+@push('scripts')
+<script>
         let localStream = null;
         let videoEnabled = true;
         let audioEnabled = true;
@@ -93,10 +100,10 @@
                 if (ping > 300) {
                     networkQuality = 'poor';
                     status.className = 'network-status network-poor';
-                    status.innerHTML = '🔴 Network: Poor (' + ping + 'ms) - Consider Audio Only';
+                    status.innerHTML = '<i class="fas fa-circle" style="color: #ef4444;"></i> Network: Poor (' + ping + 'ms) - Consider Audio Only';
                     document.getElementById('audioOnlyToggle').click();
                 } else {
-                    status.innerHTML = '🟢 Network: Good (' + ping + 'ms)';
+                    status.innerHTML = '<i class="fas fa-circle" style="color: #10b981;"></i> Network: Good (' + ping + 'ms)';
                 }
             } catch (e) {
                 console.warn('Network check failed');
@@ -180,6 +187,6 @@
         }
 
         init();
-    </script>
-</body>
-</html>
+</script>
+@endpush
+@endsection

@@ -1,45 +1,45 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Create Meeting - Digital Leap Africa</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; }
-        .container { max-width: 600px; margin: 50px auto; padding: 30px; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-        .form-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 5px; font-weight: 500; color: #374151; }
-        input, textarea { width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 16px; }
-        textarea { height: 100px; resize: vertical; }
-        .btn { padding: 12px 24px; background: #4f46e5; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; width: 100%; }
-        .btn:hover { background: #4338ca; }
-        h1 { margin-bottom: 30px; color: #1f2937; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Create New Meeting</h1>
-        
-        <form action="{{ route('meetings.store') }}" method="POST">
-            @csrf
-            
-            <div class="form-group">
-                <label for="title">Meeting Title</label>
-                <input type="text" id="title" name="title" required placeholder="Digital Leap Africa Community Call">
-            </div>
-            
-            <div class="form-group">
-                <label for="description">Description (Optional)</label>
-                <textarea id="description" name="description" placeholder="Brief description of the meeting agenda..."></textarea>
-            </div>
-            
-            <div class="form-group">
-                <label for="scheduled_at">Schedule for Later (Optional)</label>
-                <input type="datetime-local" id="scheduled_at" name="scheduled_at">
-            </div>
-            
-            <button type="submit" class="btn">Create Meeting</button>
-        </form>
+@extends('layouts.app')
+
+@section('title', 'Create Meeting - Digital Leap Africa')
+@section('meta_description', 'Create a new video conference meeting for your community or team.')
+
+@section('content')
+<div class="card" style="max-width: 600px; margin: 0 auto;">
+    <div style="text-align: center; margin-bottom: 2rem;">
+        <div style="font-size: 3rem; color: var(--cyan-accent); margin-bottom: 1rem;">
+            <i class="fas fa-video"></i>
+        </div>
+        <h1 style="margin-bottom: 0.5rem; color: var(--diamond-white);">Create New Meeting</h1>
+        <p style="color: var(--cool-gray);">Set up a video conference for your community</p>
     </div>
-</body>
-</html>
+    
+    <form action="{{ route('meetings.store') }}" method="POST">
+        @csrf
+        
+        <div class="form-group">
+            <label for="title" class="form-label">
+                <i class="fas fa-heading"></i> Meeting Title
+            </label>
+            <input type="text" id="title" name="title" class="form-control" required placeholder="Digital Leap Africa Community Call">
+        </div>
+        
+        <div class="form-group">
+            <label for="description" class="form-label">
+                <i class="fas fa-align-left"></i> Description (Optional)
+            </label>
+            <textarea id="description" name="description" class="form-control" placeholder="Brief description of the meeting agenda..."></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="scheduled_at" class="form-label">
+                <i class="fas fa-calendar-alt"></i> Schedule for Later (Optional)
+            </label>
+            <input type="datetime-local" id="scheduled_at" name="scheduled_at" class="form-control">
+        </div>
+        
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 1rem; font-size: 1.1rem;">
+            <i class="fas fa-plus-circle"></i> Create Meeting
+        </button>
+    </form>
+</div>
+@endsection
