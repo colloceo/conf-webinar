@@ -1,0 +1,128 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Meeting;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+
+class SignalingController extends Controller
+{
+    public function signal(Request $request, Meeting $meeting)
+    {
+        $message = $request->all();
+        $sessionId = session()->getId();
+        
+        // Store participant in cache
+        $participants = Cache::get("meeting.{$meeting->slug}.participants", []);
+        $participants[$sessionId] = [
+            'id' => $sessionId,
+            'joined_at' => now(),
+            'last_seen' => now()
+        ];
+        Cache::put("meeting.{$meeting->slug}.participants", $participants, 3600);
+        
+        // Handle different message types
+        switch ($message['type']) {
+            case 'join':
+                return $this->handleJoin($meeting, $sessionId);
+            case 'offer':
+            case 'answer':
+            case 'ice-candidate':
+                return $this->relaySignal($meeting, $message, $sessionId);
+            case 'chat':
+            case 'hand-raised':
+            case 'poll':
+            case 'notes':
+                return $this->broadcastMessage($meeting, $message, $sessionId);
+        }
+        
+        return response()->json(['status' => 'ok']);
+    }
+    
+    private function handleJoin(Meeting $meeting, string $sessionId)
+    {
+        $participants = Cache::get("meeting.{$meeting->slug}.participants", []);
+        
+        // Store signaling data for this session
+        Cache::put("meeting.{$meeting->slug}.signals.{$sessionId}", [], 3600);
+        
+        return response()->json([
+            'type' => 'joined',
+            'participantCount' => count($participants),
+            'sessionId' => $sessionId
+        ]);
+    }
+    
+    private function relaySignal(Meeting $meeting, array $message, string $fromSession)
+    {
+        $targetSession = $message['target'] ?? null;
+        
+        if ($targetSession) {
+            // Store signal for specific target
+            $signals = Cache::get("meeting.{$meeting->slug}.signals.{$targetSession}", []);
+            $signals[] = array_merge($message, ['from' => $fromSession]);
+            Cache::put("meeting.{$meeting->slug}.signals.{$targetSession}", $signals, 3600);
+        }
+        
+        return response()->json(['status' => 'relayed']);
+    }
+    
+    private function broadcastMessage(Meeting $meeting, array $message, string $fromSession)
+    {
+        $participants = Cache::get("meeting.{$meeting->slug}.participants", []);
+        
+        foreach ($participants as $sessionId => $participant) {
+            if ($sessionId !== $fromSession) {
+                $signals = Cache::get("meeting.{$meeting->slug}.signals.{$sessionId}", []);
+                $signals[] = array_merge($message, ['from' => $fromSession]);
+                Cache::put("meeting.{$meeting->slug}.signals.{$sessionId}", $signals, 3600);
+            }
+        }
+        
+        return response()->json(['status' => 'broadcasted']);
+    }
+    
+    public function poll(Request $request, Meeting $meeting)
+    {
+        $sessionId = session()->getId();
+        $signals = Cache::get("meeting.{$meeting->slug}.signals.{$sessionId}", []);
+        
+        // Clear signals after retrieving
+        Cache::put("meeting.{$meeting->slug}.signals.{$sessionId}", [], 3600);
+        
+        // Update last seen
+        $participants = Cache::get("meeting.{$meeting->slug}.participants", []);
+        if (isset($participants[$sessionId])) {
+            $participants[$sessionId]['last_seen'] = now();
+            Cache::put("meeting.{$meeting->slug}.participants", $participants, 3600);
+        }
+        
+        return response()->json([
+            'signals' => $signals,
+            'participantCount' => count($participants)
+        ]);
+    }
+    
+    public function leave(Request $request, Meeting $meeting)
+    {
+        $sessionId = session()->getId();
+        
+        // Remove from participants
+        $participants = Cache::get("meeting.{$meeting->slug}.participants", []);
+        unset($participants[$sessionId]);
+        Cache::put("meeting.{$meeting->slug}.participants", $participants, 3600);
+        
+        // Clean up signals
+        Cache::forget("meeting.{$meeting->slug}.signals.{$sessionId}");
+        
+        // Notify others
+        foreach ($participants as $otherSessionId => $participant) {
+            $signals = Cache::get("meeting.{$meeting->slug}.signals.{$otherSessionId}", []);
+            $signals[] = ['type' => 'user-left', 'from' => $sessionId];
+            Cache::put("meeting.{$meeting->slug}.signals.{$otherSessionId}", $signals, 3600);
+        }
+        
+        return response()->json(['status' => 'left']);
+    }
+}
