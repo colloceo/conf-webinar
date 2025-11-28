@@ -18,6 +18,10 @@ Route::prefix('meetings')->name('meetings.')->group(function () {
     Route::post('{meeting}/signal', [App\Http\Controllers\SignalingController::class, 'signal'])->name('signal');
     Route::get('{meeting}/poll', [App\Http\Controllers\SignalingController::class, 'poll'])->name('poll');
     Route::post('{meeting}/leave', [App\Http\Controllers\SignalingController::class, 'leave'])->name('leave');
+    
+    // Participant management
+    Route::post('{meeting}/participants/status', [App\Http\Controllers\ParticipantController::class, 'updateStatus'])->name('participants.status');
+    Route::get('{meeting}/participants', [App\Http\Controllers\ParticipantController::class, 'list'])->name('participants.list');
 });
 
 // Authentication routes

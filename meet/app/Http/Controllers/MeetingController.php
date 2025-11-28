@@ -10,7 +10,7 @@ class MeetingController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('auth')->except(['lobby', 'join']);
+        $this->middleware('auth');
     }
 
     public function create()
@@ -42,6 +42,16 @@ class MeetingController extends Controller
 
     public function lobby(Meeting $meeting)
     {
+        // Store user session for this meeting
+        session(['meeting_' . $meeting->slug => [
+            'user_id' => Auth::id(),
+            'user_name' => Auth::user()->name,
+            'user_email' => Auth::user()->email,
+            'joined_at' => now(),
+            'is_muted' => false,
+            'is_video_off' => false
+        ]]);
+        
         return view('meetings.lobby', compact('meeting'));
     }
 
@@ -49,6 +59,11 @@ class MeetingController extends Controller
     {
         if (!$meeting->is_active) {
             abort(404, 'Meeting not found or ended');
+        }
+
+        // Ensure user session exists for this meeting
+        if (!session()->has('meeting_' . $meeting->slug)) {
+            return redirect()->route('meetings.lobby', $meeting);
         }
 
         return view('meetings.room', compact('meeting'));

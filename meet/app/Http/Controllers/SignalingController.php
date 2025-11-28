@@ -12,13 +12,23 @@ class SignalingController extends Controller
     {
         $message = $request->all();
         $sessionId = session()->getId();
+        $userSession = session('meeting_' . $meeting->slug);
         
-        // Store participant in cache
+        if (!$userSession) {
+            return response()->json(['error' => 'Not authorized for this meeting'], 403);
+        }
+        
+        // Store participant in cache with Google user info
         $participants = Cache::get("meeting.{$meeting->slug}.participants", []);
         $participants[$sessionId] = [
             'id' => $sessionId,
-            'joined_at' => now(),
-            'last_seen' => now()
+            'user_id' => $userSession['user_id'],
+            'user_name' => $userSession['user_name'],
+            'user_email' => $userSession['user_email'],
+            'joined_at' => $userSession['joined_at'],
+            'last_seen' => now(),
+            'is_muted' => $userSession['is_muted'] ?? false,
+            'is_video_off' => $userSession['is_video_off'] ?? false
         ];
         Cache::put("meeting.{$meeting->slug}.participants", $participants, 3600);
         

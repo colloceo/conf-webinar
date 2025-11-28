@@ -109,10 +109,7 @@
                 <div id="peopleTab" class="participants-list" style="display: none;">
                     <h4>Participants (<span id="participantCount">1</span>)</h4>
                     <div id="participantsList">
-                        <div class="participant">
-                            <span>👤</span>
-                            <span>You (Host)</span>
-                        </div>
+                        <!-- Participants will be loaded dynamically -->
                     </div>
                     
                     <div class="hand-queue">
@@ -188,8 +185,8 @@
                     
                     data.signals.forEach(handleSignalingMessage);
                     
-                    // Update participant count
-                    document.getElementById('participantCount').textContent = data.participantCount;
+                    // Load participants every poll
+                    loadParticipants();
                 } catch (error) {
                     console.error('Polling error:', error);
                 }
@@ -427,6 +424,7 @@
             isAudioMuted = !isAudioMuted;
             localStream.getAudioTracks().forEach(track => track.enabled = !isAudioMuted);
             updateControlButtons();
+            updateParticipantStatus({ is_muted: isAudioMuted });
             broadcastMessage({ type: 'audio-toggle', muted: isAudioMuted });
         }
 
@@ -434,7 +432,46 @@
             isVideoMuted = !isVideoMuted;
             localStream.getVideoTracks().forEach(track => track.enabled = !isVideoMuted);
             updateControlButtons();
+            updateParticipantStatus({ is_video_off: isVideoMuted });
             broadcastMessage({ type: 'video-toggle', muted: isVideoMuted });
+        }
+        
+        async function updateParticipantStatus(status) {
+            try {
+                await fetch('/meetings/{{ $meeting->slug }}/participants/status', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify(status)
+                });
+            } catch (error) {
+                console.error('Status update error:', error);
+            }
+        }
+        
+        async function loadParticipants() {
+            try {
+                const response = await fetch('/meetings/{{ $meeting->slug }}/participants');
+                const data = await response.json();
+                
+                const participantsList = document.getElementById('participantsList');
+                const participantCount = document.getElementById('participantCount');
+                
+                participantCount.textContent = data.participants.length;
+                
+                participantsList.innerHTML = data.participants.map(participant => `
+                    <div class="participant">
+                        <span><i class="fas fa-user"></i></span>
+                        <span>${participant.user_name}</span>
+                        ${participant.is_muted ? '<i class="fas fa-microphone-slash" style="color: #ef4444;"></i>' : ''}
+                        ${participant.is_video_off ? '<i class="fas fa-video-slash" style="color: #ef4444;"></i>' : ''}
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Load participants error:', error);
+            }
         }
 
         function toggleHand() {
@@ -533,6 +570,9 @@
         
         // Initialize when page loads
         initMeeting();
+        
+        // Load participants initially
+        setTimeout(loadParticipants, 1000);
 </script>
 @endpush
 @endsection
