@@ -4,7 +4,8 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "sfu": "node mediasoup-server.js"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
@@ -15,7 +16,12 @@
         "vite": "^7.0.7"
     },
     "dependencies": {
+        "express": "^5.1.0",
         "laravel-echo": "^2.2.6",
-        "pusher-js": "^8.4.0"
+        "mediasoup": "^3.19.12",
+        "mediasoup-client": "^3.18.1",
+        "pusher-js": "^8.4.0",
+        "socket.io": "^4.8.1",
+        "socket.io-client": "^4.8.1"
     }
 }

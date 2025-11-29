@@ -181,10 +181,11 @@
 @push('scripts')
 <script type="module">
         import { MeetingRecorder, BandwidthManager, ReconnectionManager } from '/resources/js/meeting.js';
+        import SFUClient from '/resources/js/sfu-client.js';
         
         // WebRTC and Meeting State
         let localStream = null;
-        let peers = new Map();
+        let sfuClient = null;
         let meetingSettings = JSON.parse(localStorage.getItem('meetingSettings') || '{}');
         let isAudioMuted = !meetingSettings.audioEnabled;
         let isVideoMuted = !meetingSettings.videoEnabled;
@@ -196,6 +197,7 @@
         let bandwidthManager = new BandwidthManager();
         let reconnectionManager = new ReconnectionManager(initMeeting);
         let isRecording = false;
+        let remoteStreams = new Map();
         
         const iceServers = [
             { urls: 'stun:stun.l.google.com:19302' },
@@ -227,30 +229,30 @@
         }
 
         async function setupWebSocket() {
-            // Join meeting via HTTP
-            await fetch('/meetings/{{ $meeting->slug }}/signal', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                },
-                body: JSON.stringify({ type: 'join' })
+            // Initialize SFU
+            sfuClient = new SFUClient('http://localhost:3000');
+            await sfuClient.init();
+            
+            // Setup consumer listener
+            sfuClient.socket.on('newProducer', async ({ producerId, socketId }) => {
+                const consumer = await sfuClient.consume(producerId, socketId);
+                if (consumer) {
+                    const stream = new MediaStream([consumer.track]);
+                    remoteStreams.set(socketId, stream);
+                    addVideoTile(socketId, stream);
+                    updateVideoGrid();
+                }
             });
             
-            // Subscribe to WebSocket channel
+            // Subscribe to WebSocket channel for chat/signals
             window.Echo.channel('meeting.{{ $meeting->slug }}')
                 .listen('.signal', (event) => {
                     handleSignalingMessage(event.data);
                 });
             
-            // Fallback polling
-            startPolling();
-            
             // Bandwidth monitoring
             setInterval(() => {
-                peers.forEach((pc) => {
-                    bandwidthManager.adaptQuality(pc, localStream);
-                });
+                bandwidthManager.adaptQuality(null, localStream);
             }, 10000);
         }
         
@@ -280,7 +282,9 @@
                 localStream.getAudioTracks().forEach(track => track.enabled = !isAudioMuted);
                 localStream.getVideoTracks().forEach(track => track.enabled = !isVideoMuted);
                 
-                // Show avatar by default, video tile when video is enabled
+                // Produce to SFU
+                await sfuClient.produceMedia(localStream);
+                
                 updateLocalView();
                 
             } catch (error) {
